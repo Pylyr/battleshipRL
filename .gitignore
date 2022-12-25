@@ -1,0 +1,3 @@
+# ignore all .zip files in all directories
+.mypy_cache
+*.pyc
