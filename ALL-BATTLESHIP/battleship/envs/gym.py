@@ -1,19 +1,21 @@
 import gym
 from gym import spaces
 from battleship.battleship import Game, Player, Ship
+from battleship.battleship import SHIP_SIZES, LENGTH, WIDTH
 import numpy as np
 import copy
 
 
 class MyEnv(gym.Env):
     def __init__(self):
-        self.action_space = spaces.Discrete(100)
-        # observation space is a 10x10 grid of
+        self.action_space = spaces.Discrete(LENGTH * WIDTH)
+        # observation space is a grid
         # 0: unknown
         # 1: miss
         # 2: hit
 
-        self.observation_space = spaces.Box(low=0, high=2, shape=(10, 10), dtype=np.int8)
+        # observation space is an image of the board
+        self.observation_space = spaces.Box(low=0, high=2, shape=(LENGTH * WIDTH,), dtype=int)
         self.game = Game()
         self.screen = None
         self.clock = None
@@ -21,54 +23,54 @@ class MyEnv(gym.Env):
 
     def step(self, action):
         if self.game.victory != -1:
-            return self.game.players[0].guesses, 0, True, {}
-        x, y = action // 10, action % 10
+            return self.game.players[0].guesses.flatten(), 0, True, {}
+        x, y = action // LENGTH, action % WIDTH
         # if it is an illegal move, the reward is -10
         if not self.game.check_legal(x, y, 0):
             self.score -= 10
             self.game.step += 1
-            return self.game.players[0].guesses, -10, False, {}
+            return self.game.players[0].guesses.flatten(), -10, False, {}
         self.game.turn(x, y)
         # miss has a reward of -1,
-        # hit has a reward of 1
-        # sink has a reward of 2 * ship size
+        # hit has a reward of 5
+        # sink has a reward of 3 * ship size
         reward = 0
         if self.game.players[0].guesses[x][y] == 2:
             # if the ship has sunk, reward the player with 2 * ship size
+            reward = 5
             for ship in self.game.players[1].ships:
                 if (x, y) in ship.squares:
                     if ship.size == 0:
-                        reward = 3 * len(ship.squares)
-            else:
-                reward = 1
+                        reward += 3 * len(ship.squares)
         else:
             reward = -1
         done = self.game.victory != -1
         if done:
-            reward = 10
+            reward = WIDTH * LENGTH
         self.score += reward
-        return self.game.players[0].guesses, reward, done, {}
+        return self.game.players[0].guesses.flatten(), reward, done, {}
 
     def reset(self):
-        p = Player(ships=[
-            Ship(4, [(0, 0), (0, 1), (0, 2), (0, 3)]),
-            Ship(3, [(2, 0), (2, 1), (2, 2)]),
-            Ship(3, [(4, 0), (4, 1), (4, 2)]),
-            Ship(2, [(6, 0), (6, 1)]),
-            Ship(2, [(8, 0), (8, 1)]),
-            Ship(2, [(0, 6), (0, 7)]),
-            Ship(1, [(2, 6)]),
-            Ship(1, [(4, 6)]),
-            Ship(1, [(6, 6)]),
-            Ship(1, [(8, 6)])
-        ]
-        )
-        # p.random_place_ships()
+        # p = Player(ships=[
+        #     Ship(4, [(0, 0), (0, 1), (0, 2), (0, 3)]),
+        #     Ship(3, [(2, 0), (2, 1), (2, 2)]),
+        #     Ship(3, [(4, 0), (4, 1), (4, 2)]),
+        #     Ship(2, [(6, 0), (6, 1)]),
+        #     Ship(2, [(8, 0), (8, 1)]),
+        #     Ship(2, [(0, 6), (0, 7)]),
+        #     Ship(1, [(2, 6)]),
+        #     Ship(1, [(4, 6)]),
+        #     Ship(1, [(6, 6)]),
+        #     Ship(1, [(8, 6)])
+        # ]
+        # )
+        p = Player()
+        p.random_place_ships()
 
         b = copy.deepcopy(p)
         self.game = Game([p, b])
         self.score = 0
-        return self.game.players[0].guesses
+        return self.game.players[0].guesses.flatten()
 
     def render(self, mode='human'):
         import pygame
@@ -89,8 +91,8 @@ class MyEnv(gym.Env):
         label = font.render("Score: " + str(self.score), 1, (255, 255, 255))
         self.screen.blit(label, (550 - label.get_width() // 2, 550))
 
-        for x in range(10):
-            for y in range(10):
+        for x in range(LENGTH):
+            for y in range(WIDTH):
                 # draw the hits of the opponent in red
                 if self.game.players[1].guesses[x][y] == 2:
                     gfxdraw.box(self.screen, (x * 40 + 50, y * 40 + 50, 40, 40), (255, 0, 0))
@@ -103,8 +105,8 @@ class MyEnv(gym.Env):
                 else:
                     gfxdraw.box(self.screen, (x * 40 + 50, y * 40 + 50, 40, 40), (128, 128, 128))
 
-        for x in range(10):
-            for y in range(10):
+        for x in range(LENGTH):
+            for y in range(WIDTH):
                 if self.game.players[0].guesses[x][y] == 1:
                     gfxdraw.box(self.screen, (x * 40 + 50 + 600, y * 40 + 50, 40, 40), (64, 64, 64))
                 elif self.game.players[0].guesses[x][y] == 2:
@@ -112,9 +114,11 @@ class MyEnv(gym.Env):
                 else:
                     gfxdraw.box(self.screen, (x * 40 + 50 + 600, y * 40 + 50, 40, 40), (128, 128, 128))
 
-        for i in range(10):
+        for i in range(LENGTH + 1):
             pygame.draw.line(self.screen, (0, 0, 0), (50 + i * 40, 50), (50 + i * 40, 450), 2)
             pygame.draw.line(self.screen, (0, 0, 0), (50 + i * 40 + 600, 50), (50 + i * 40 + 600, 450), 2)
+
+        for i in range(WIDTH + 1):
             pygame.draw.line(self.screen, (0, 0, 0), (50, 50 + i * 40), (450, 50 + i * 40), 2)
             pygame.draw.line(self.screen, (0, 0, 0), (50 + 600, 50 + i * 40), (450 + 600, 50 + i * 40), 2)
 
