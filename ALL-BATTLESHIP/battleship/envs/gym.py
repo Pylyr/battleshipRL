@@ -25,9 +25,8 @@ class MyEnv(gym.Env):
         if self.game.victory != -1:
             return self.game.players[0].guesses.flatten(), 0, True, {}
         x, y = action // LENGTH, action % WIDTH
-        # if it is an illegal move, the reward is -10
         if not self.game.check_legal(x, y, 0):
-            self.score -= 10
+            self.score -= LENGTH * WIDTH  # punish the player for making an illegal move
             self.game.step += 1
             return self.game.players[0].guesses.flatten(), -10, False, {}
         self.game.turn(x, y)

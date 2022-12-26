@@ -23,7 +23,7 @@ import numpy as np
 
 LENGTH = 10
 WIDTH = 10
-SHIP_SIZES = [4, 4, 4]
+SHIP_SIZES = [4, 3, 3, 2, 2, 2, 1, 1, 1, 1]
 
 
 def get_neighbours(x, y):
@@ -64,18 +64,18 @@ class Player:
         occupied_squares = set()
         for ship_size in SHIP_SIZES:
             while True:
-                x = random.randint(0, LENGTH - ship_size)
-                y = random.randint(0, WIDTH - ship_size)
+                x = random.randint(0, LENGTH - 1)
+                y = random.randint(0, WIDTH - 1)
                 # pick a random direction between up, down, left and right
                 direction = random.randint(0, 3)
                 # check that the ship fits on the board
-                if direction == 0 and y + ship_size >= WIDTH:
+                if direction == 0 and y + ship_size > WIDTH:
                     continue
                 elif direction == 1 and y - ship_size < 0:
                     continue
                 elif direction == 2 and x - ship_size < 0:
                     continue
-                elif direction == 3 and x + ship_size >= LENGTH:
+                elif direction == 3 and x + ship_size > LENGTH:
                     continue
 
                 if direction == 0:
@@ -142,7 +142,3 @@ class Game:
             # if the shot didn't hit a ship, change the current player
             # self.current_player = 1 - self.current_player
             self.players[self.current_player].guesses[x][y] = 1
-
-
-p = Player()
-print(p.random_place_ships())
